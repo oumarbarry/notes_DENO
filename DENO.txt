@@ -1,0 +1,244 @@
+Deno Foundations:
+	Node Architecture:
+		V8 -> Node's Bindings (Node API) -> LIBUV (an asynchronous i/o api)
+	Deno Architecture:
+		V8 -> RUSTY_V8 -> TOKIO
+			when a js/ts file contains non-builtins js/ts code like Deno./window. object, 
+				rusty_v8 can detect this part of code 
+					and send it to the deno rust code i.e the tokio library 
+						and this last send back the result of his process
+			in other word, the rust part of deno is triggered when we use Deno./window.
+
+		Deno.metrics() is a function that output 
+			this dispatch/send back operation between rusty_v8 and tokio
+
+		deno with to window object, try to have a browser compatible api contrarily to node
+
+
+Deno vs Node:
+	Deno Game Changers:
+		first class typescript:
+			deno has a built-in typescript compiler
+		security first:
+			deno executes code in a sandbox like browser 
+				so by default, code is unable to access to file system, network.. until you allow it
+		es modules
+		"decentralized" modules
+		standart library:
+			you can import standart library via 'https://deno.land/std/<PATH_TO_THE_WANTED_MODULE>'
+		opinionated modules:
+			deno gives in his manual a standart styling guide of how to create deno modules
+		built-in tooling:
+			it has a built-in bundler, file watcher, code formatter, testing tool..
+		browser compatible api:
+			it means that if your code don't use the Deno keyword, it will run in frontend as same
+		async returns promises:
+			in deno, async always returns promises, due to binding to rust futures
+				so we can use await without any trouble
+		single executable to rule them all:
+			deno is a single executable as it act in one file as a runtime and package manager..
+				so it's the deno exec / deno.exe that is considered as a single executable
+			one feature future of deno would maybe add is the idea 
+				to combine deno exec + our script file to create one single file
+
+	Deno Permissions:
+		deno follow two main security principles:
+			-the principle of least privilege
+				that states that a subject should be given only those privileges 
+				needed for it to complete its task
+			-whitelisting
+				that is the practice of explicitly allowing some identified entities to access to a particular privilege, service, access...it's the reverse of blacklisting
+
+			deno achieve these two principles with permissions flags, like:
+				--allow-env, --allow-net, --allow-read...
+
+		to avoid using everytime permissions flags, on way is that:
+			deno install <permissions_flags> <script_name> -n oumar.deno
+				will compile and generate, add it to path, a deno file named: oumar.deno co 
+					so we can call oumar.deno everywhere in the shell
+				deno --help install: for more infos
+
+		in development, every time we wanna change the permissions access, 
+			we will have to uninstall then reinstall the file,
+				so the solution to evit this repetitive task is to use a task runner
+					in deno, we have drake, a make-like library
+			 		
+			 		//examples:
+			 			//main.ts
+			 			console.log("Hello ", Deno.env.get().toUpperCase())
+			 			
+			 			//drakefile.ts
+			 			import {task, run, sh} from 'https://deno.land/x/drake@1.2.0/mod.ts'
+			 			task('hello', [], async () => {
+			 				console.log('hello from drake')
+			 				await sh('deno run --allow-env main.ts')
+			 			})
+			 			run()
+
+			 			deno run -A drakefile.ts hello
+
+
+Deno Modules and Tooling:
+	in deno, an imported module must have explicit file extension
+		it can be a local module or a url module
+			deno info 'main.ts' || deno info 'https://deno.land/std/examples/welcome.ts'
+	standard library
+		'https://deno.land/std/<PATH_TO_THE_WANTED_MODULE>'
+	third-party modules
+		DENO LAND: 'https://deno.land/x/<PATH_TO_THE_WANTED_MODULE>'
+		PIKA CDN: 'pika.dev/cdn'
+		JSPM: 'dev.jspm.io'
+		or in github or anywhere that a module is located in internet
+
+	mod.ts:
+		a convention in deno is to named to main module that import all others as 'mod.ts'
+
+	deno caching
+		deno run mod.ts
+			when our code has link to external dependencies, 
+				the 1rst time it gets run, deno downloads all the specified dependencies and caches them
+					deno caches dep. in the directory specified in $DENO_DIR env variable
+		
+		deno run --reload mod.ts //to force the re-downloading of deps
+
+		if you want maybe to use special version of library
+			or share the deno_dir with the source code to github, 
+			to not have to redownload dependencies once in production/release
+				you can create a 'deno_dir' directory in your project base directory, 
+					set the $DENO_DIR env to this 'deno_dir' 
+						fish/cmd: set DENO_DIR deno_dir
+						zsh/zsh: export DENO_DIR=deno_dir
+					and then download deps with
+						deno run mod.ts OR deno cache mod.ts 
+
+	deps.ts 
+		//the package.json alike of deno
+		//it's a simple ts file where exports all dependencies
+
+	locking dependencies's versions:
+		touch lock.json //create 'lock.json' on the project base directory
+		deno cache --lock=lock.json --lock-write src/dep.ts
+
+	deno upgrade 
+
+	deno tooling:
+		bundler: deno bundle 'mod.ts' 'mod.bundle.ts' //deno bundle <input> <output>
+		debugger: --inspect, --inspect-brk
+		dependency inspector: deno info
+		formatter: deno fmt //implicitly use by deno vscode extension
+		documentation generator: deno doc
+		test runner: deno test
+		linter: deno lint
+
+
+Deno for Backend Development:
+	drash
+	deno-express
+	pogo //inspired by hafi of nodejs, it has built-in support for react and jsx, interesting for ssr
+	servest //support react, so ssr too
+	oak //nearly identical to koa, the brother of express in nodejs
+
+	OAK: a middleware framework for deno net server
+		context: is an object that has mainly two properties 'request' and 'response'
+		request: is also an object that has url, secure, method, body, headers as properties
+		response: is an object that has redirect, type, status, body, headers as properties
+
+		middleware in oak
+			request->
+				mid1(app.use+ctx+next)->next()->
+					mid2(app.use+ctx+next)->next()->
+						finalmid(app.use+ctx)->return->
+							mid2(app.use+ctx+next)->return->
+								mid1(app.use+ctx+next)->
+									response
+
+		apis
+
+
+TypeScript:
+	Dynamic vs Static / Strong vs Weak Typed Languages:
+		static pros: less bugs, self easy documentation, helpful autocompletion in editors
+		dynamic pros: allow to be more flexible and write code faster
+		
+		examples:
+			dynamic & weakly typed: javascript, php, perl, vb
+			static & weakly typed: c, c++
+			static & strongly typed: c#, scala, java, f#, haskell
+			dynamic & strongly typed: python, ruby, groovy, clojure, erlang
+	
+	Static typing in javascript:
+		typescript: 
+			a typed superset of js that compiles to plain js, created by microsofy
+		flow:
+			create by facebook, initially for react, compiled in plain js by babel
+		elm, reasonml: 
+			the two has their own kind of language that compile in plain js throught their own compiler
+	
+	installing ts compiler: 
+		node: npm install -g typescript
+		deno: as we know it's built-in in deno
+
+	typescript:
+		tsc --init //generate the 'tsconfig.json' file
+		tsc script.ts --watch
+
+		types:
+			let isCool: boolean = true
+			let age: number = 22
+			let eyeColor: string = "black"
+			let quote: string = `${eyeColor} essence`
+			let pet: string[] = ['cat', 'lion']
+			let mythicPet: Array<string> = ['dragon', 'lizard']
+			let wizard: object = {name: 'Suno'}
+			let uu: undefined = undefined
+			let nn: null = null
+			//tuple
+				let basket: [string, number] = ['basketball', 9]
+			//enum
+				enum Size { Small=1, Medium=2, Large=3 }
+				let sizeName: number = Size.Small
+			//any
+				let whatever: any = 'bouuuuuuuh'
+				whatever = basket
+			//void
+				let sing = (): void => {
+					console.log('lalalalala');
+				}
+			//never
+				let error = (): never => {
+					throw Error('ooops');
+				}
+			//interface
+				interface RobotArmy {
+					count: number,
+					magic?: string
+				}
+				let robots: RobotArmy = {count: 5}
+			//function
+				let sing2 = (): string => 'lalalalala';
+			//classes
+				class Animal {
+					private sing: string = 'ouloulou'
+					constructor(mySong: string) {
+						this.sing = mySong;
+					}
+					greet() {
+						return this.sing
+					}
+				}
+				let lion = new Animal('GRAWWHHH')
+			//union
+				let confused: string | number | boolean = 9
+			//type assertion:
+				let cat = {} as RobotArmy
+				cat.count
+			//type inference: means that ts is smart enough to deduce the type of a variable
+				let x = 5
+				x = 'hello' //-> will throw an error: type 'string' is not assignable to type 'number'
+
+
+Ressources:
+	deno.land
+	getemoji.com
+	typescriptlang.com
+
